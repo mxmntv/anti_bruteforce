@@ -1,9 +1,7 @@
 package config
 
 import (
-	"flag"
 	"fmt"
-	"os"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -13,7 +11,7 @@ type Config struct {
 	HTTP  `yaml:"http"`
 	Log   `yaml:"logger"`
 	Redis `yaml:"redis"`
-	BucketCapacity
+	//BucketCapacity
 }
 
 type App struct {
@@ -32,23 +30,23 @@ type Log struct {
 }
 
 type Redis struct {
-	Host string `env-required:"true" yaml:"redisHost"    env:"RS_HOST"`
-	Port int    `env-required:"true" yaml:"redisPort"    env:"RS_PORT"`
+	RsHost string `env-required:"true" yaml:"redisHost"    env:"RS_HOST"`
+	RsPort int    `env-required:"true" yaml:"redisPort"    env:"RS_PORT"`
 }
 
-type BucketCapacity struct {
-	Login    int
-	Password int
-	IP       int
-}
+// type BucketCapacity struct {
+// 	Login    int
+// 	Password int
+// 	IP       int
+// }
 
 func NewConfig(path string) (*Config, error) {
 	config := &Config{}
-	fset := flag.NewFlagSet("Anti-bruteforce", flag.ContinueOnError)
-	fset.IntVar(&config.BucketCapacity.Login, "N", 0, "path to config file")
-	fset.IntVar(&config.BucketCapacity.Password, "M", 0, "path to config file")
-	fset.IntVar(&config.BucketCapacity.IP, "K", 0, "path to config file")
-	fset.Parse(os.Args[1:])
+	// fset := flag.NewFlagSet("Anti-bruteforce", flag.ContinueOnError)
+	// fset.IntVar(&config.BucketCapacity.Login, "N", 0, "path to config file")
+	// fset.IntVar(&config.BucketCapacity.Password, "M", 0, "path to config file")
+	// fset.IntVar(&config.BucketCapacity.IP, "K", 0, "path to config file")
+	// fset.Parse(os.Args[1:])
 	err := cleanenv.ReadConfig(path, config)
 	if err != nil {
 		return nil, fmt.Errorf("config error: %w", err)
