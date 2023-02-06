@@ -2,22 +2,29 @@ package app
 
 import (
 	"context"
+	"net/http"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/mxmntv/anti_bruteforce/config/config"
+	"github.com/mxmntv/anti_bruteforce/internal/usecase/repository"
+	"github.com/mxmntv/anti_bruteforce/pkg/httpserver"
 	"github.com/mxmntv/anti_bruteforce/pkg/logger"
 )
 
 func Run(cfg *config.Config) error {
 	logger := logger.New(cfg.Log.Level)
 
-	// mux := http.NewServeMux()
-	// handle := handler.NewEventHandler(eventUseCase, logger)
-	// handle.Register(mux)
+	repo := repository.BucketRepository
 
-	// server := httpserver.NewServer(cfg.HTTP.Host, cfg.HTTP.Port, mux)
+	eventUseCase := usecase.NewEventUsecase(repo)
+
+	mux := http.NewServeMux()
+	handle := handler.NewEventHandler(eventUseCase, logger)
+	handle.Register(mux)
+
+	server := httpserver.NewServer(cfg.HTTP.Host, cfg.HTTP.Port, mux)
 
 	ctx, cancel := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)

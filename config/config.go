@@ -7,11 +7,11 @@ import (
 )
 
 type Config struct {
-	App   `yaml:"app"`
-	HTTP  `yaml:"http"`
-	Log   `yaml:"logger"`
-	Redis `yaml:"redis"`
-	//BucketCapacity
+	App            `yaml:"app"`
+	HTTP           `yaml:"http"`
+	Log            `yaml:"logger"`
+	Redis          `yaml:"redis"`
+	BucketCapacity `yaml:"capacity"`
 }
 
 type App struct {
@@ -34,19 +34,14 @@ type Redis struct {
 	RsPort int    `env-required:"true" yaml:"redisPort"    env:"RS_PORT"`
 }
 
-// type BucketCapacity struct {
-// 	Login    int
-// 	Password int
-// 	IP       int
-// }
+type BucketCapacity struct {
+	Login    int `yaml:"N" env-default:"10" env:"N_CAP"`
+	Password int `yaml:"M" env-default:"100" env:"M_CAP"`
+	IP       int `yaml:"K" env-default:"1000" env:"K_CAP"`
+}
 
 func NewConfig(path string) (*Config, error) {
 	config := &Config{}
-	// fset := flag.NewFlagSet("Anti-bruteforce", flag.ContinueOnError)
-	// fset.IntVar(&config.BucketCapacity.Login, "N", 0, "path to config file")
-	// fset.IntVar(&config.BucketCapacity.Password, "M", 0, "path to config file")
-	// fset.IntVar(&config.BucketCapacity.IP, "K", 0, "path to config file")
-	// fset.Parse(os.Args[1:])
 	err := cleanenv.ReadConfig(path, config)
 	if err != nil {
 		return nil, fmt.Errorf("config error: %w", err)
