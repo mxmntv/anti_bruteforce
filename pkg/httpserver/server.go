@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 type Server struct {
@@ -12,10 +13,10 @@ type Server struct {
 
 func NewServer(host string, port int, handler http.Handler) *Server {
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", host, port),
-		Handler: handler,
-		// ReadTimeout:  10 * time.Second,
-		// WriteTimeout: 10 * time.Second,
+		Addr:         fmt.Sprintf("%s:%d", host, port),
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	server := &Server{

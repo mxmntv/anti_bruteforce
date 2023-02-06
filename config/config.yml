@@ -1,0 +1,15 @@
+app:
+  name: 'antibruteforce'
+  version: '1.0.0'
+  apiVersion: '1'
+
+http:
+  host: 'localhost'
+  port: 8080
+
+logger:
+  logLevel: 'debug'
+
+redis:
+  redisHost: 'localhost'
+  redispPort: 6379
