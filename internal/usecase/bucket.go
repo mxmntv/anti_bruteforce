@@ -2,7 +2,11 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"sync"
+	"time"
 
 	"github.com/mxmntv/anti_bruteforce/internal/model"
 )
@@ -20,10 +24,11 @@ type BucketRepository interface {
 
 type BucketUsecase struct {
 	repository BucketRepository
+	capacity   model.BucketCapacity
 }
 
-func NewBucketUsecase(r BucketRepository) *BucketUsecase {
-	return &BucketUsecase{r}
+func NewBucketUsecase(r BucketRepository, c model.BucketCapacity) *BucketUsecase {
+	return &BucketUsecase{r, c}
 }
 
 func (u BucketUsecase) GetBucket(ctx context.Context, bucket []model.Bucket) (bool, error) {
@@ -55,26 +60,32 @@ func (u BucketUsecase) CheckList(ctx context.Context, ip string) (*model.Include
 	l := &model.Included{}
 	ers := make(chan error, 2)
 	defer close(ers)
-	wg.Add(2)
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("context timeout has occurred") //todo
+	default:
+		wg.Add(2)
 
-	go func() {
-		res, err := u.repository.CheckBlackList(ctx, ip)
-		if err != nil {
-			ers <- err
-		}
-		l.Blacklist = res
-		wg.Done()
-	}()
+		go func() {
+			res, err := u.repository.CheckBlackList(ctx, ip)
+			if err != nil {
+				ers <- err
+			}
+			l.Blacklist = res
+			wg.Done()
+		}()
 
-	go func() {
-		res, err := u.repository.CheckWhiteList(ctx, ip)
-		if err != nil {
-			ers <- err
-		}
-		l.Whitelist = res
-		wg.Done()
-	}()
-	wg.Wait()
+		go func() {
+			res, err := u.repository.CheckWhiteList(ctx, ip)
+			if err != nil {
+				ers <- err
+			}
+			l.Whitelist = res
+			wg.Done()
+		}()
+		wg.Wait()
+	}
+
 	select {
 	case e := <-ers:
 		return nil, e
@@ -82,4 +93,31 @@ func (u BucketUsecase) CheckList(ctx context.Context, ip string) (*model.Include
 		break
 	}
 	return l, nil
+}
+
+func (u BucketUsecase) GetBucketList(ctx context.Context, body *io.ReadCloser) ([]model.Bucket, error) {
+	var req model.Request
+	err := json.NewDecoder(*body).Decode(&req)
+	if err != nil {
+		return nil, fmt.Errorf("Usecase/bucket/GetBucketList: %w", err)
+	}
+	defaultTtl := 1 * time.Minute
+	buckets := []model.Bucket{
+		{
+			Key:      req.Login,
+			Capacity: u.capacity.Login,
+			TTL:      defaultTtl,
+		},
+		{
+			Key:      req.Password,
+			Capacity: u.capacity.Password,
+			TTL:      defaultTtl,
+		},
+		{
+			Key:      req.IP,
+			Capacity: u.capacity.IP,
+			TTL:      defaultTtl,
+		},
+	}
+	return buckets, nil
 }

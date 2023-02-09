@@ -4,14 +4,15 @@ import (
 	"fmt"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/mxmntv/anti_bruteforce/internal/model"
 )
 
 type Config struct {
-	App            `yaml:"app"`
-	HTTP           `yaml:"http"`
-	Log            `yaml:"logger"`
-	Redis          `yaml:"redis"`
-	BucketCapacity `yaml:"capacity"`
+	App                  `yaml:"app"`
+	HTTP                 `yaml:"http"`
+	Log                  `yaml:"logger"`
+	Redis                `yaml:"redis"`
+	model.BucketCapacity `yaml:"capacity"` // doub
 }
 
 type App struct {
@@ -34,11 +35,11 @@ type Redis struct {
 	RsPort int    `env-required:"true" yaml:"redisPort"    env:"RS_PORT"`
 }
 
-type BucketCapacity struct {
-	Login    int `yaml:"N" env-default:"10" env:"N_CAP"`
-	Password int `yaml:"M" env-default:"100" env:"M_CAP"`
-	IP       int `yaml:"K" env-default:"1000" env:"K_CAP"`
-}
+// type BucketCapacity struct {
+// 	Login    int `yaml:"N" env-default:"10" env:"N_CAP"`
+// 	Password int `yaml:"M" env-default:"100" env:"M_CAP"`
+// 	IP       int `yaml:"K" env-default:"1000" env:"K_CAP"`
+// }
 
 func NewConfig(path string) (*Config, error) {
 	config := &Config{}
