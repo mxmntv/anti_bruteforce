@@ -47,7 +47,7 @@ func Run(cfg *config.Config) error {
 		}
 	}()
 
-	logger.Info("calendar is running...")
+	logger.Info("antibruteforce is running...")
 
 	if err := server.Start(ctx); err != nil {
 		logger.Error("failed to start http server: " + err.Error())

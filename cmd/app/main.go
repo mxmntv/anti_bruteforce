@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -12,7 +13,7 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "./../../config/config.yml", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "./config/config.yml", "Path to configuration file")
 }
 
 func main() {
@@ -22,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("config error: %s", err)
 	}
-
+	fmt.Println(cfg)
 	if err := app.Run(cfg); err != nil {
 		os.Exit(1)
 	}

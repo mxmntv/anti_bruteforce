@@ -7,20 +7,17 @@ LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%d
 build:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/app
 
-run: build
+run-bin: build
 	$(BIN) -config ./config/config.yml
 
 build-img:
 	docker build \
 		--build-arg=LDFLAGS="$(LDFLAGS)" \
 		-t $(DOCKER_IMG) \
-		-f build/Dockerfile .
+		-f ./Dockerfile .
 
 run-img: build-img
 	docker run $(DOCKER_IMG)
-
-version: build
-	$(BIN) version
 
 test:
 	go test -race ./internal/... ./pkg/...
@@ -31,12 +28,7 @@ install-lint-deps:
 lint: install-lint-deps
 	golangci-lint run ./...
 
-generate:
-	rm -rf proto/pb
-	mkdir -p proto/pb
-
-	protoc --proto_path=proto --go_out=proto/pb --go_opt=paths=source_relative \
-    --go-grpc_out=proto/pb --go-grpc_opt=paths=source_relative \
-    proto/*.proto
+run:
+	docker-compose -f ./docker-compose.yml up
 
 .PHONY: build run build-img run-img version test lint

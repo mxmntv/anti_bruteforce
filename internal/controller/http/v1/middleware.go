@@ -11,6 +11,7 @@ import (
 func loggingMiddleware(logger logger.LogInterface, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+		fmt.Println(start)
 		next.ServeHTTP(w, r)
 		logline := fmt.Sprintf("%s %s %s", r.Method, r.RequestURI, time.Since(start))
 		logger.Info(logline)

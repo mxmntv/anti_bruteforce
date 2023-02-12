@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/mxmntv/anti_bruteforce/internal/model"
@@ -39,12 +40,17 @@ func NewBucketHandler(u BucketUsecase, l logger.LogInterface) BucketHandler {
 }
 
 func (h BucketHandler) Register(handler *http.ServeMux) {
+	handler.Handle(version+"/", loggingMiddleware(h.logger, http.HandlerFunc(h.heartbeat)))
 	handler.Handle(version+"/check", loggingMiddleware(h.logger, http.HandlerFunc(h.checkBucket)))
 	handler.Handle(version+"/remove/blacklist", loggingMiddleware(h.logger, http.HandlerFunc(h.removeFromBlacklist)))
 	handler.Handle(version+"/remove/whitelist", loggingMiddleware(h.logger, http.HandlerFunc(h.removeFromWhitelist)))
 	handler.Handle(version+"/add/blacklist", loggingMiddleware(h.logger, http.HandlerFunc(h.addToBlacklist)))
 	handler.Handle(version+"/add/whitelist", loggingMiddleware(h.logger, http.HandlerFunc(h.addToWhitelist)))
 	handler.Handle(version+"/remove/keys", loggingMiddleware(h.logger, http.HandlerFunc(h.removeKeys)))
+}
+
+func (h BucketHandler) heartbeat(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("hello"))
 }
 
 func (h BucketHandler) checkBucket(w http.ResponseWriter, r *http.Request) {
@@ -145,6 +151,7 @@ func (h BucketHandler) removeFromWhitelist(w http.ResponseWriter, r *http.Reques
 
 func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
+		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
