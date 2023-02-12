@@ -3,7 +3,6 @@ package v1
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"github.com/mxmntv/anti_bruteforce/internal/model"
@@ -13,14 +12,14 @@ import (
 const version = "v1"
 
 type BucketUsecase interface {
-	GetBucket(ctx context.Context, bucket []model.Bucket) (bool, error)
+	GetBucket(ctx context.Context, bucket map[string]model.Bucket) (bool, error)
 	Delete(ctx context.Context, keys []string) error
 	AddToBlacklist(ctx context.Context, ip string) error
 	RemoveFromBlacklist(ctx context.Context, ip string) error
 	AddToWhitelist(ctx context.Context, ip string) error
 	RemoveFromWhitelist(ctx context.Context, ip string) error
 	CheckList(ctx context.Context, ip string) (*model.Included, error)
-	GetBucketList(ctx context.Context, body *io.ReadCloser) ([]model.Bucket, error)
+	GetBucketList(ctx context.Context, req *model.Request) (map[string]model.Bucket, error)
 }
 
 type BucketHandler struct {
@@ -28,7 +27,7 @@ type BucketHandler struct {
 	logger  logger.LogInterface
 }
 
-type response struct {
+type checkStatus struct {
 	Ok bool `json:"ok"`
 }
 
@@ -53,41 +52,47 @@ func (h BucketHandler) checkBucket(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var response response
+	var req model.Request
+	var status checkStatus
 	ctx := r.Context()
 	defer r.Body.Close()
-	buckets, err := h.usecase.GetBucketList(ctx, &r.Body)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	checkListsRes, err := h.usecase.CheckList(ctx, buckets[2].Key) // doub magic number (?)
+	buckets, err := h.usecase.GetBucketList(ctx, &req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	checkListsRes, err := h.usecase.CheckList(ctx, buckets["ip"].Key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if checkListsRes.Blacklist {
-		response.Ok = false
-		if err := json.NewEncoder(w).Encode(response); err != nil {
+	switch {
+	case checkListsRes.Blacklist:
+		status.Ok = false
+		if err := json.NewEncoder(w).Encode(status); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	} else if checkListsRes.Whitelist {
-		response.Ok = true
-		if err := json.NewEncoder(w).Encode(response); err != nil {
+	case checkListsRes.Whitelist:
+		status.Ok = true
+		if err := json.NewEncoder(w).Encode(status); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-	} else {
+	default:
 		resp, err := h.usecase.GetBucket(ctx, buckets)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.Ok = resp
-		if err := json.NewEncoder(w).Encode(response); err != nil {
+		status.Ok = resp
+		if err := json.NewEncoder(w).Encode(status); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -102,13 +107,13 @@ func (h BucketHandler) removeFromBlacklist(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 	defer r.Body.Close()
 	var ip struct {
-		Ip string `json:"ip"`
+		IP string `json:"ip"`
 	}
-	if err := json.NewEncoder(w).Encode(ip); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := json.NewDecoder(r.Body).Decode(&ip); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err := h.usecase.RemoveFromBlacklist(ctx, ip.Ip)
+	err := h.usecase.RemoveFromBlacklist(ctx, ip.IP)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -124,13 +129,13 @@ func (h BucketHandler) removeFromWhitelist(w http.ResponseWriter, r *http.Reques
 	ctx := r.Context()
 	defer r.Body.Close()
 	var ip struct {
-		Ip string `json:"ip"`
+		IP string `json:"ip"`
 	}
-	if err := json.NewEncoder(w).Encode(ip); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := json.NewDecoder(r.Body).Decode(&ip); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err := h.usecase.RemoveFromWhitelist(ctx, ip.Ip)
+	err := h.usecase.RemoveFromWhitelist(ctx, ip.IP)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -146,13 +151,13 @@ func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	defer r.Body.Close()
 	var ip struct {
-		Ip string `json:"ip"`
+		IP string `json:"ip"`
 	}
-	if err := json.NewEncoder(w).Encode(ip); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := json.NewDecoder(r.Body).Decode(&ip); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err := h.usecase.AddToBlacklist(ctx, ip.Ip)
+	err := h.usecase.AddToBlacklist(ctx, ip.IP)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -168,13 +173,13 @@ func (h BucketHandler) addToWhitelist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	defer r.Body.Close()
 	var ip struct {
-		Ip string `json:"ip"`
+		IP string `json:"ip"`
 	}
-	if err := json.NewEncoder(w).Encode(ip); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := json.NewDecoder(r.Body).Decode(&ip); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err := h.usecase.AddToWhitelist(ctx, ip.Ip)
+	err := h.usecase.AddToWhitelist(ctx, ip.IP)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -192,8 +197,8 @@ func (h BucketHandler) removeKeys(w http.ResponseWriter, r *http.Request) {
 	var key struct {
 		Key []string `json:"keys"`
 	}
-	if err := json.NewEncoder(w).Encode(key); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := json.NewDecoder(r.Body).Decode(&key); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	err := h.usecase.Delete(ctx, key.Key)

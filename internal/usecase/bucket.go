@@ -2,9 +2,7 @@ package usecase
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"sync"
 	"time"
 
@@ -12,7 +10,7 @@ import (
 )
 
 type BucketRepository interface {
-	GetSetBucket(ctx context.Context, bucket []model.Bucket) (bool, error)
+	GetSetBucket(ctx context.Context, bucket map[string]model.Bucket) (bool, error)
 	DeleteKeys(ctx context.Context, keys []string) error
 	AddToBlacklist(ctx context.Context, ip string) error
 	RemoveFromBlacklist(ctx context.Context, ip string) error
@@ -31,7 +29,7 @@ func NewBucketUsecase(r BucketRepository, c model.BucketCapacity) *BucketUsecase
 	return &BucketUsecase{r, c}
 }
 
-func (u BucketUsecase) GetBucket(ctx context.Context, bucket []model.Bucket) (bool, error) {
+func (u BucketUsecase) GetBucket(ctx context.Context, bucket map[string]model.Bucket) (bool, error) {
 	return u.repository.GetSetBucket(ctx, bucket)
 }
 
@@ -62,7 +60,7 @@ func (u BucketUsecase) CheckList(ctx context.Context, ip string) (*model.Include
 	defer close(ers)
 	select {
 	case <-ctx.Done():
-		return nil, fmt.Errorf("context timeout has occurred") //todo
+
 	default:
 		wg.Add(2)
 
@@ -95,29 +93,29 @@ func (u BucketUsecase) CheckList(ctx context.Context, ip string) (*model.Include
 	return l, nil
 }
 
-func (u BucketUsecase) GetBucketList(ctx context.Context, body *io.ReadCloser) ([]model.Bucket, error) {
-	var req model.Request
-	err := json.NewDecoder(*body).Decode(&req)
-	if err != nil {
-		return nil, fmt.Errorf("Usecase/bucket/GetBucketList: %w", err)
+func (u BucketUsecase) GetBucketList(ctx context.Context, req *model.Request) (map[string]model.Bucket, error) {
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf(" - Usecase - GetBucketList: context timeout err")
+	default:
+		defaultTTL := 1 * time.Minute
+		buckets := map[string]model.Bucket{
+			"login": {
+				Key:      req.Login,
+				Capacity: u.capacity.Login,
+				TTL:      defaultTTL,
+			},
+			"pwd": {
+				Key:      req.Password,
+				Capacity: u.capacity.Password,
+				TTL:      defaultTTL,
+			},
+			"ip": {
+				Key:      req.IP,
+				Capacity: u.capacity.IP,
+				TTL:      defaultTTL,
+			},
+		}
+		return buckets, nil
 	}
-	defaultTtl := 1 * time.Minute
-	buckets := []model.Bucket{
-		{
-			Key:      req.Login,
-			Capacity: u.capacity.Login,
-			TTL:      defaultTtl,
-		},
-		{
-			Key:      req.Password,
-			Capacity: u.capacity.Password,
-			TTL:      defaultTtl,
-		},
-		{
-			Key:      req.IP,
-			Capacity: u.capacity.IP,
-			TTL:      defaultTtl,
-		},
-	}
-	return buckets, nil
 }

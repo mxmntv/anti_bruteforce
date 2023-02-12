@@ -12,7 +12,7 @@ type Config struct {
 	HTTP                 `yaml:"http"`
 	Log                  `yaml:"logger"`
 	Redis                `yaml:"redis"`
-	model.BucketCapacity `yaml:"capacity"` // doub
+	model.BucketCapacity `yaml:"capacity"` // doubt
 }
 
 type App struct {
@@ -34,12 +34,6 @@ type Redis struct {
 	RsHost string `env-required:"true" yaml:"redisHost"    env:"RS_HOST"`
 	RsPort int    `env-required:"true" yaml:"redisPort"    env:"RS_PORT"`
 }
-
-// type BucketCapacity struct {
-// 	Login    int `yaml:"N" env-default:"10" env:"N_CAP"`
-// 	Password int `yaml:"M" env-default:"100" env:"M_CAP"`
-// 	IP       int `yaml:"K" env-default:"1000" env:"K_CAP"`
-// }
 
 func NewConfig(path string) (*Config, error) {
 	config := &Config{}

@@ -15,6 +15,6 @@ redis:
   redisPort: 6379
 
 capacity:
-  N: 10
-  M: 100
-  K: 1000
+  n: 10
+  m: 100
+  k: 1000

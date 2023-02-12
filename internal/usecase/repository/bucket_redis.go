@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -34,28 +35,30 @@ func NewBucketRepo(r RedisStorage, l logger.LogInterface) *BucketRepository {
 	}
 }
 
-func (b BucketRepository) GetSetBucket(ctx context.Context, bucket []model.Bucket) (bool, error) {
+func (b BucketRepository) GetSetBucket(ctx context.Context, bucket map[string]model.Bucket) (bool, error) {
+	var bslice []model.Bucket
 	cmds, _ := b.storage.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		for _, b := range bucket {
 			pipe.Get(ctx, b.Key)
+			bslice = append(bslice, b)
 		}
 		return nil
 	})
-	counter := 0
+	var c int
 
 	for i, cmd := range cmds {
 		val, err := cmd.(*redis.StringCmd).Int()
 		arg := cmd.Args()[1].(string)
 		switch {
-		case err == redis.Nil:
-			err := b.storage.Set(ctx, arg, bucket[i].Capacity-1, bucket[i].TTL).Err()
+		case errors.Is(err, redis.Nil):
+			err := b.storage.Set(ctx, arg, bslice[i].Capacity-1, bslice[i].TTL).Err()
 			if err != nil {
 				return false, err // todo wrap error
 			}
 		case err != nil:
 			return false, err // todo wrap error
 		case val == 0:
-			counter++
+			c++
 		case val > 0:
 			err := b.storage.Decr(ctx, arg).Err()
 			if err != nil {
@@ -63,7 +66,7 @@ func (b BucketRepository) GetSetBucket(ctx context.Context, bucket []model.Bucke
 			}
 		}
 	}
-	if counter > 0 {
+	if c > 0 {
 		return false, nil
 	}
 	return true, nil
@@ -76,7 +79,6 @@ func (b BucketRepository) DeleteKeys(ctx context.Context, keys []string) error {
 		}
 		return nil
 	})
-
 	if err != nil {
 		return err // todo wrap err
 	}
@@ -95,7 +97,7 @@ func (b BucketRepository) RemoveFromBlacklist(ctx context.Context, ip string) er
 	if err != nil {
 		return err
 	}
-	fmt.Println(res) //todo log success status
+	fmt.Println(res) // todo log success status
 	return nil
 }
 
@@ -111,14 +113,14 @@ func (b BucketRepository) RemoveFromWhitelist(ctx context.Context, ip string) er
 	if err != nil {
 		return err
 	}
-	fmt.Println(res) //todo log success status
+	fmt.Println(res) // todo log success status
 	return nil
 }
 
 func (b BucketRepository) CheckBlackList(ctx context.Context, ip string) (bool, error) {
 	list, err := b.storage.LRange(ctx, "blacklist", 0, -1).Result()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(err) // todo return err
 	}
 	targetip := net.ParseIP(ip)
 	for _, el := range list {
