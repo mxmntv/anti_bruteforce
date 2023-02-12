@@ -9,7 +9,7 @@ import (
 
 	"github.com/mxmntv/anti_bruteforce/internal/model"
 	"github.com/mxmntv/anti_bruteforce/pkg/logger"
-	"github.com/redis/go-redis/v9"
+	redis "github.com/redis/go-redis/v9"
 )
 
 type RedisStorage interface {
