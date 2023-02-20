@@ -1,3 +1,4 @@
+//nolint:typecheck
 package integration_test
 
 import (
@@ -12,7 +13,7 @@ import (
 )
 
 const (
-	host            = "app:8080"
+	host            = "localhost:8080"
 	healthPath      = "http://" + host + "/"
 	attempts        = 10
 	defaultLoginCap = 10
