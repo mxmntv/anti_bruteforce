@@ -9,7 +9,7 @@ import (
 	"github.com/mxmntv/anti_bruteforce/internal/model"
 	"github.com/mxmntv/anti_bruteforce/internal/usecase/repository"
 	"github.com/mxmntv/anti_bruteforce/pkg/logger"
-	"gopkg.in/validator.v2"
+	validator "gopkg.in/validator.v2"
 )
 
 const version = "/v1"
