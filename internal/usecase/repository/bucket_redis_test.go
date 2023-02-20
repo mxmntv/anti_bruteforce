@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alicebob/miniredis/v2"
+	miniredis "github.com/alicebob/miniredis/v2"
 	"github.com/mxmntv/anti_bruteforce/internal/model"
 	redis "github.com/redis/go-redis/v9"
 )
