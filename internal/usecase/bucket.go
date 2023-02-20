@@ -11,11 +11,11 @@ import (
 
 type BucketRepository interface {
 	GetSetBucket(ctx context.Context, bucket map[string]model.Bucket) (bool, error)
-	DeleteKeys(ctx context.Context, keys []string) error
+	DeleteKeys(ctx context.Context, keys []string) ([]string, error)
 	AddToBlacklist(ctx context.Context, ip string) error
-	RemoveFromBlacklist(ctx context.Context, ip string) error
+	RemoveFromBlacklist(ctx context.Context, ip string) (int, error)
 	AddToWhitelist(ctx context.Context, ip string) error
-	RemoveFromWhitelist(ctx context.Context, ip string) error
+	RemoveFromWhitelist(ctx context.Context, ip string) (int, error)
 	CheckBlackList(ctx context.Context, ip string) (bool, error)
 	CheckWhiteList(ctx context.Context, ip string) (bool, error)
 }
@@ -33,7 +33,7 @@ func (u BucketUsecase) GetBucket(ctx context.Context, bucket map[string]model.Bu
 	return u.repository.GetSetBucket(ctx, bucket)
 }
 
-func (u BucketUsecase) Delete(ctx context.Context, keys []string) error {
+func (u BucketUsecase) Delete(ctx context.Context, keys []string) ([]string, error) {
 	return u.repository.DeleteKeys(ctx, keys)
 }
 
@@ -41,7 +41,7 @@ func (u BucketUsecase) AddToBlacklist(ctx context.Context, ip string) error {
 	return u.repository.AddToBlacklist(ctx, ip)
 }
 
-func (u BucketUsecase) RemoveFromBlacklist(ctx context.Context, ip string) error {
+func (u BucketUsecase) RemoveFromBlacklist(ctx context.Context, ip string) (int, error) {
 	return u.repository.RemoveFromBlacklist(ctx, ip)
 }
 
@@ -49,7 +49,7 @@ func (u BucketUsecase) AddToWhitelist(ctx context.Context, ip string) error {
 	return u.repository.AddToWhitelist(ctx, ip)
 }
 
-func (u BucketUsecase) RemoveFromWhitelist(ctx context.Context, ip string) error {
+func (u BucketUsecase) RemoveFromWhitelist(ctx context.Context, ip string) (int, error) {
 	return u.repository.RemoveFromWhitelist(ctx, ip)
 }
 
@@ -60,7 +60,6 @@ func (u BucketUsecase) CheckList(ctx context.Context, ip string) (*model.Include
 	defer close(ers)
 	select {
 	case <-ctx.Done():
-
 	default:
 		wg.Add(2)
 
@@ -96,7 +95,7 @@ func (u BucketUsecase) CheckList(ctx context.Context, ip string) (*model.Include
 func (u BucketUsecase) GetBucketList(ctx context.Context, req *model.Request) (map[string]model.Bucket, error) {
 	select {
 	case <-ctx.Done():
-		return nil, fmt.Errorf(" - Usecase - GetBucketList: context timeout err")
+		return nil, fmt.Errorf("usecase - get bucket list: context timeout err")
 	default:
 		defaultTTL := 1 * time.Minute
 		buckets := map[string]model.Bucket{

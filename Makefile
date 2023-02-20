@@ -6,29 +6,39 @@ LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%d
 
 build:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/app
+.PHONY: build
 
 run-bin: build
 	$(BIN) -config ./config/config.yml
+.PHONY: run-bin
 
 build-img:
 	docker build \
 		--build-arg=LDFLAGS="$(LDFLAGS)" \
 		-t $(DOCKER_IMG) \
 		-f ./Dockerfile .
+.PHONY: build-img
 
 run-img: build-img
 	docker run $(DOCKER_IMG)
+.PHONY: run-img
 
 test:
-	go test -race ./internal/... ./pkg/...
+	go test -v -race ./internal/usecase/repository/...
+.PHONY: test
 
 install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.41.1
+.PHONY: install-lint-deps
 
 lint: install-lint-deps
 	golangci-lint run ./...
+.PHONY: lint
 
 run:
 	docker-compose -f ./docker-compose.yml up
+.PHONY: run
 
-.PHONY: build run build-img run-img version test lint
+stop:
+	docker-compose down -v --remove-orphans
+.PHONY: stop

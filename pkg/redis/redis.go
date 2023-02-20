@@ -2,6 +2,8 @@ package redis
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -18,7 +20,7 @@ func NewRedisClent(url string) (*Redis, error) {
 	})
 
 	if err := client.Ping(context.Background()).Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("redis client - connection - redis connection failed: %w", err)
 	}
 
 	return &Redis{
@@ -26,8 +28,12 @@ func NewRedisClent(url string) (*Redis, error) {
 	}, nil
 }
 
-func (r Redis) Close() {
+func (r Redis) Close() error {
 	if r.Client != nil {
-		r.Client.Close()
+		if err := r.Client.Close(); err != nil {
+			return fmt.Errorf("redis client - close - client close err: %w", err)
+		}
+		return nil
 	}
+	return fmt.Errorf("redis client - close - redis client unreachable %s", time.Now())
 }

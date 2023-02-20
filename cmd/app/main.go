@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -21,10 +20,11 @@ func main() {
 
 	cfg, err := config.NewConfig(configFile)
 	if err != nil {
-		log.Fatalf("config error: %s", err)
+		log.Fatalf("main - parse config - config error: %s", err.Error())
 	}
-	fmt.Println(cfg)
+
 	if err := app.Run(cfg); err != nil {
+		log.Printf("main - app start - app start failed: %s", err.Error())
 		os.Exit(1)
 	}
 }

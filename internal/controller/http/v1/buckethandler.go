@@ -3,22 +3,24 @@ package v1
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/mxmntv/anti_bruteforce/internal/model"
+	"github.com/mxmntv/anti_bruteforce/internal/usecase/repository"
 	"github.com/mxmntv/anti_bruteforce/pkg/logger"
+	"gopkg.in/validator.v2"
 )
 
-const version = "v1"
+const version = "/v1"
 
 type BucketUsecase interface {
 	GetBucket(ctx context.Context, bucket map[string]model.Bucket) (bool, error)
-	Delete(ctx context.Context, keys []string) error
+	Delete(ctx context.Context, keys []string) ([]string, error)
 	AddToBlacklist(ctx context.Context, ip string) error
-	RemoveFromBlacklist(ctx context.Context, ip string) error
+	RemoveFromBlacklist(ctx context.Context, ip string) (int, error)
 	AddToWhitelist(ctx context.Context, ip string) error
-	RemoveFromWhitelist(ctx context.Context, ip string) error
+	RemoveFromWhitelist(ctx context.Context, ip string) (int, error)
 	CheckList(ctx context.Context, ip string) (*model.Included, error)
 	GetBucketList(ctx context.Context, req *model.Request) (map[string]model.Bucket, error)
 }
@@ -40,7 +42,7 @@ func NewBucketHandler(u BucketUsecase, l logger.LogInterface) BucketHandler {
 }
 
 func (h BucketHandler) Register(handler *http.ServeMux) {
-	handler.Handle(version+"/", loggingMiddleware(h.logger, http.HandlerFunc(h.heartbeat)))
+	handler.Handle("/", loggingMiddleware(h.logger, http.HandlerFunc(h.heartbeat)))
 	handler.Handle(version+"/check", loggingMiddleware(h.logger, http.HandlerFunc(h.checkBucket)))
 	handler.Handle(version+"/remove/blacklist", loggingMiddleware(h.logger, http.HandlerFunc(h.removeFromBlacklist)))
 	handler.Handle(version+"/remove/whitelist", loggingMiddleware(h.logger, http.HandlerFunc(h.removeFromWhitelist)))
@@ -50,7 +52,7 @@ func (h BucketHandler) Register(handler *http.ServeMux) {
 }
 
 func (h BucketHandler) heartbeat(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("hello"))
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h BucketHandler) checkBucket(w http.ResponseWriter, r *http.Request) {
@@ -67,12 +69,24 @@ func (h BucketHandler) checkBucket(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	if err := validator.Validate(req); err != nil {
+		e := errors.New("validate request body err:" + err.Error())
+		http.Error(w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
 	buckets, err := h.usecase.GetBucketList(ctx, &req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	checkListsRes, err := h.usecase.CheckList(ctx, buckets["ip"].Key)
+	var badIP *repository.BadIPError
+	if errors.As(err, &badIP) {
+		http.Error(w, badIP.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -105,7 +119,7 @@ func (h BucketHandler) checkBucket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h BucketHandler) removeFromBlacklist(w http.ResponseWriter, r *http.Request) {
+func (h BucketHandler) removeFromBlacklist(w http.ResponseWriter, r *http.Request) { //nolint:dupl
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -119,15 +133,23 @@ func (h BucketHandler) removeFromBlacklist(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err := h.usecase.RemoveFromBlacklist(ctx, ip.IP)
+	var item struct {
+		DeletedItems int `json:"deleted"`
+	}
+	res, err := h.usecase.RemoveFromBlacklist(ctx, ip.IP)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	item.DeletedItems = res
 	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(item); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
-func (h BucketHandler) removeFromWhitelist(w http.ResponseWriter, r *http.Request) {
+func (h BucketHandler) removeFromWhitelist(w http.ResponseWriter, r *http.Request) { //nolint:dupl
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -141,17 +163,24 @@ func (h BucketHandler) removeFromWhitelist(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err := h.usecase.RemoveFromWhitelist(ctx, ip.IP)
+	var item struct {
+		DeletedItems int `json:"deleted"`
+	}
+	res, err := h.usecase.RemoveFromWhitelist(ctx, ip.IP)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	item.DeletedItems = res
 	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(item); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
-func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) {
+func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) { //nolint:dupl
 	if r.Method != http.MethodPost {
-		fmt.Println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -165,6 +194,11 @@ func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err := h.usecase.AddToBlacklist(ctx, ip.IP)
+	var badIPNet *repository.BadIPNetError
+	if errors.As(err, &badIPNet) {
+		http.Error(w, badIPNet.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -172,7 +206,7 @@ func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h BucketHandler) addToWhitelist(w http.ResponseWriter, r *http.Request) {
+func (h BucketHandler) addToWhitelist(w http.ResponseWriter, r *http.Request) { //nolint:dupl
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -187,6 +221,11 @@ func (h BucketHandler) addToWhitelist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err := h.usecase.AddToWhitelist(ctx, ip.IP)
+	var badIPNet *repository.BadIPNetError
+	if errors.As(err, &badIPNet) {
+		http.Error(w, badIPNet.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -208,10 +247,18 @@ func (h BucketHandler) removeKeys(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err := h.usecase.Delete(ctx, key.Key)
+	var delkey struct {
+		DeletedKeys []string `json:"deleted"`
+	}
+	res, err := h.usecase.Delete(ctx, key.Key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	delkey.DeletedKeys = res
 	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(delkey); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
