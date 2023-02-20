@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	host            = "localhost:8080"
+	host            = "app:8080"
 	healthPath      = "http://" + host + "/"
 	attempts        = 10
 	defaultLoginCap = 10
