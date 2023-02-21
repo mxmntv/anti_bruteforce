@@ -2,10 +2,7 @@ module github.com/mxmntv/anti_bruteforce
 
 go 1.19
 
-require (
-	github.com/rs/zerolog v1.29.0
-	gopkg.in/validator.v2 v2.0.1
-)
+require github.com/rs/zerolog v1.29.0
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
@@ -27,6 +24,7 @@ require (
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )

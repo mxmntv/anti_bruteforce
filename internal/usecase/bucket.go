@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"time"
 
@@ -19,6 +19,11 @@ type BucketRepository interface {
 	CheckBlackList(ctx context.Context, ip string) (bool, error)
 	CheckWhiteList(ctx context.Context, ip string) (bool, error)
 }
+
+var (
+	ErrorInvalidReqBody = errors.New("invalid request body: some field is empty")
+	ErrorContextTimeout = errors.New("context deadline exceeded")
+)
 
 type BucketUsecase struct {
 	repository BucketRepository
@@ -95,9 +100,12 @@ func (u BucketUsecase) CheckList(ctx context.Context, ip string) (*model.Include
 func (u BucketUsecase) GetBucketList(ctx context.Context, req *model.Request) (map[string]model.Bucket, error) {
 	select {
 	case <-ctx.Done():
-		return nil, fmt.Errorf("usecase - get bucket list: context timeout err")
+		return nil, ErrorContextTimeout
 	default:
 		defaultTTL := 1 * time.Minute
+		if req.Login == "" || req.Password == "" || req.IP == "" {
+			return nil, ErrorInvalidReqBody
+		}
 		buckets := map[string]model.Bucket{
 			"login": {
 				Key:      req.Login,

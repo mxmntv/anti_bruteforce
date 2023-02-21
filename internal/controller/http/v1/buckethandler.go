@@ -7,9 +7,9 @@ import (
 	"net/http"
 
 	"github.com/mxmntv/anti_bruteforce/internal/model"
+	"github.com/mxmntv/anti_bruteforce/internal/usecase"
 	"github.com/mxmntv/anti_bruteforce/internal/usecase/repository"
 	"github.com/mxmntv/anti_bruteforce/pkg/logger"
-	validator "gopkg.in/validator.v2"
 )
 
 const version = "/v1"
@@ -42,13 +42,19 @@ func NewBucketHandler(u BucketUsecase, l logger.LogInterface) BucketHandler {
 }
 
 func (h BucketHandler) Register(handler *http.ServeMux) {
-	handler.Handle("/", loggingMiddleware(h.logger, http.HandlerFunc(h.heartbeat)))
-	handler.Handle(version+"/check", loggingMiddleware(h.logger, http.HandlerFunc(h.checkBucket)))
-	handler.Handle(version+"/remove/blacklist", loggingMiddleware(h.logger, http.HandlerFunc(h.removeFromBlacklist)))
-	handler.Handle(version+"/remove/whitelist", loggingMiddleware(h.logger, http.HandlerFunc(h.removeFromWhitelist)))
-	handler.Handle(version+"/add/blacklist", loggingMiddleware(h.logger, http.HandlerFunc(h.addToBlacklist)))
-	handler.Handle(version+"/add/whitelist", loggingMiddleware(h.logger, http.HandlerFunc(h.addToWhitelist)))
-	handler.Handle(version+"/remove/keys", loggingMiddleware(h.logger, http.HandlerFunc(h.removeKeys)))
+	handler.Handle("/", loggingMD(h.logger, http.HandlerFunc(h.heartbeat)))
+	handler.Handle(version+"/check", loggingMD(h.logger,
+		checkMethodMD("POST", http.HandlerFunc(h.checkBucket))))
+	handler.Handle(version+"/remove/blacklist", loggingMD(h.logger,
+		checkMethodMD("POST", http.HandlerFunc(h.removeFromBlacklist))))
+	handler.Handle(version+"/remove/whitelist", loggingMD(h.logger,
+		checkMethodMD("POST", http.HandlerFunc(h.removeFromWhitelist))))
+	handler.Handle(version+"/add/blacklist", loggingMD(h.logger,
+		checkMethodMD("POST", http.HandlerFunc(h.addToBlacklist))))
+	handler.Handle(version+"/add/whitelist", loggingMD(h.logger,
+		checkMethodMD("POST", http.HandlerFunc(h.addToWhitelist))))
+	handler.Handle(version+"/remove/keys", loggingMD(h.logger,
+		checkMethodMD("POST", http.HandlerFunc(h.removeKeys))))
 }
 
 func (h BucketHandler) heartbeat(w http.ResponseWriter, r *http.Request) {
@@ -56,10 +62,6 @@ func (h BucketHandler) heartbeat(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h BucketHandler) checkBucket(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	var req model.Request
 	var status checkStatus
 	ctx := r.Context()
@@ -69,14 +71,12 @@ func (h BucketHandler) checkBucket(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	if err := validator.Validate(req); err != nil {
-		e := errors.New("validate request body err:" + err.Error())
-		http.Error(w, e.Error(), http.StatusBadRequest)
+	buckets, err := h.usecase.GetBucketList(ctx, &req)
+	if errors.Is(err, usecase.ErrorInvalidReqBody) {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	buckets, err := h.usecase.GetBucketList(ctx, &req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -120,10 +120,6 @@ func (h BucketHandler) checkBucket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h BucketHandler) removeFromBlacklist(w http.ResponseWriter, r *http.Request) { //nolint:dupl
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	ctx := r.Context()
 	defer r.Body.Close()
 	var ip struct {
@@ -150,10 +146,6 @@ func (h BucketHandler) removeFromBlacklist(w http.ResponseWriter, r *http.Reques
 }
 
 func (h BucketHandler) removeFromWhitelist(w http.ResponseWriter, r *http.Request) { //nolint:dupl
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	ctx := r.Context()
 	defer r.Body.Close()
 	var ip struct {
@@ -179,11 +171,7 @@ func (h BucketHandler) removeFromWhitelist(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) { //nolint:dupl
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	defer r.Body.Close()
 	var ip struct {
@@ -206,11 +194,7 @@ func (h BucketHandler) addToBlacklist(w http.ResponseWriter, r *http.Request) { 
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h BucketHandler) addToWhitelist(w http.ResponseWriter, r *http.Request) { //nolint:dupl
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func (h BucketHandler) addToWhitelist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	defer r.Body.Close()
 	var ip struct {
@@ -234,10 +218,6 @@ func (h BucketHandler) addToWhitelist(w http.ResponseWriter, r *http.Request) { 
 }
 
 func (h BucketHandler) removeKeys(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	ctx := r.Context()
 	defer r.Body.Close()
 	var key struct {
