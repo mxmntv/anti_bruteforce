@@ -20,11 +20,11 @@ func main() {
 
 	cfg, err := config.NewConfig(configFile)
 	if err != nil {
-		log.Fatalf("main - parse config - config error: %s", err.Error())
+		log.Fatalf("[main] parse config error: %s", err.Error())
 	}
 
 	if err := app.Run(cfg); err != nil {
-		log.Printf("main - app start - app start failed: %s", err.Error())
+		log.Fatalf("[main] app start failed error: %s", err.Error())
 		os.Exit(1)
 	}
 }

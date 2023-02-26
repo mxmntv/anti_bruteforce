@@ -1,7 +1,7 @@
 package model
 
 type BucketCapacity struct {
-	Login    int `yaml:"n" env-default:"10" env:"N_CAP"`
-	Password int `yaml:"m" env-default:"100" env:"M_CAP"`
-	IP       int `yaml:"k" env-default:"1000" env:"K_CAP"`
+	Login    int `yaml:"loginCapacity" env-default:"10" env:"LOGIN_CAP"`
+	Password int `yaml:"pwdCapacity" env-default:"100" env:"PWD_CAP"`
+	IP       int `yaml:"ipCapacity" env-default:"1000" env:"IP_CAP"`
 }

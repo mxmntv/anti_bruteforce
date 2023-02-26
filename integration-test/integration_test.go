@@ -72,7 +72,7 @@ func TestHTTPCheckBucket(t *testing.T) {
 		Send().Headers("Content-Type").Add("application/json"),
 		Send().Body().String(body),
 		Expect().Status().Equal(http.StatusBadRequest),
-		Expect().Body().String().Equal("invalid ip address: 172.1600.254.1\n"), // wtf "\n" ???
+		Expect().Body().String().Equal("invalid IP address\n"),
 	)
 
 	body = `{
@@ -128,7 +128,7 @@ func TestAddToBlacklist(t *testing.T) {
 		Send().Headers("Content-Type").Add("application/json"),
 		Send().Body().String(body),
 		Expect().Status().Equal(http.StatusBadRequest),
-		Expect().Body().String().Equal("invalid ip/mask address: 1902.0.2.2/24\n"),
+		Expect().Body().String().Equal("invalid IP/net address\n"),
 	)
 }
 
@@ -163,7 +163,7 @@ func TestAddToWhitelist(t *testing.T) {
 		"ip": "193.0.2.2/22"
 	}`
 	Test(t,
-		Description("Add to blacklist Success"),
+		Description("Add to whitelist Success"),
 		Post(basePath+"/add/whitelist"),
 		Send().Headers("Content-Type").Add("application/json"),
 		Send().Body().String(body),
@@ -174,12 +174,12 @@ func TestAddToWhitelist(t *testing.T) {
 		"ip": "1903.0.2.2/22"
 	}`
 	Test(t,
-		Description("Add to blacklist Fail"),
-		Post(basePath+"/add/blacklist"),
+		Description("Add to whitelist Fail"),
+		Post(basePath+"/add/whitelist"),
 		Send().Headers("Content-Type").Add("application/json"),
 		Send().Body().String(body),
 		Expect().Status().Equal(http.StatusBadRequest),
-		Expect().Body().String().Equal("invalid ip/mask address: 1903.0.2.2/22\n"),
+		Expect().Body().String().Equal("invalid IP/net address\n"),
 	)
 }
 
@@ -200,7 +200,7 @@ func TestDeleteFromWhitelist(t *testing.T) {
 		"ip": "1903.0.2.2/22"
 	}`
 	Test(t,
-		Description("Delete from blacklist Success width zero result"),
+		Description("Delete from whitelist Success width zero result"),
 		Post(basePath+"/remove/whitelist"),
 		Send().Headers("Content-Type").Add("application/json"),
 		Send().Body().String(body),
@@ -244,5 +244,19 @@ func TestRemoveKeys(t *testing.T) {
 		Send().Body().String(body),
 		Expect().Status().Equal(http.StatusOK),
 		Expect().Body().JSON().JQ(".deleted").Equal(nil),
+	)
+
+	body = `{
+		"keys": ["Ivan", "Vasya", "qwerty", "172.16.254.1"]
+	}`
+
+	Test(t,
+		Description("Teardown (clean keys)"),
+		Post(basePath+"/remove/keys"),
+		Send().Headers("Content-Type").Add("application/json"),
+		Send().Body().String(body),
+		Expect().Status().Equal(http.StatusOK),
+		Expect().Body().JSON().JQ(".deleted").Equal(
+			[]any{string("Ivan"), string("Vasya"), string("qwerty"), string("172.16.254.1")}),
 	)
 }
