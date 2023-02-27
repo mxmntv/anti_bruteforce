@@ -24,7 +24,7 @@ jobs:
       - name: Linters
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.41.1
+          version: v1.51.2
 
   tests:
     runs-on: ubuntu-latest
@@ -38,10 +38,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Unit tests
-        run: go test -v -count=1 -race -timeout=1m ./...
+        run: go test -v -count=1 -race -timeout=1m ./internal/...
 
-      - name: Optimization tests
-        run: go test -v -count=1 -timeout=1m -tags bench ./...
+      - name: Integration tests
+        run: "docker-compose up \
+          --build \
+          --abort-on-container-exit \
+          --exit-code-from integration"
      
   tests_by_makefile:
     runs-on: ubuntu-latest

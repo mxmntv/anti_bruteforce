@@ -11,9 +11,9 @@ type Server struct {
 	server *http.Server
 }
 
-func NewServer(host string, port int, handler http.Handler) *Server {
+func NewServer(port int, handler http.Handler) *Server {
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", host, port),
+		Addr:         fmt.Sprintf(":%d", port),
 		Handler:      handler,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,

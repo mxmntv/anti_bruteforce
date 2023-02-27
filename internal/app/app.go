@@ -10,6 +10,7 @@ import (
 
 	"github.com/mxmntv/anti_bruteforce/config"
 	handler "github.com/mxmntv/anti_bruteforce/internal/controller/http/v1"
+	internalError "github.com/mxmntv/anti_bruteforce/internal/errors"
 	"github.com/mxmntv/anti_bruteforce/internal/usecase"
 	"github.com/mxmntv/anti_bruteforce/internal/usecase/repository"
 	"github.com/mxmntv/anti_bruteforce/pkg/httpserver"
@@ -18,20 +19,19 @@ import (
 )
 
 func Run(cfg *config.Config) error {
-	logger := logger.New(cfg.Log.Level)
-
+	logger := logger.New(cfg.Log.Level) // tdebt
 	rs, err := rs.NewRedisClent(fmt.Sprintf("%s:%d", cfg.Redis.RsHost, cfg.Redis.RsPort))
 	if err != nil {
-		return err // todo
+		return fmt.Errorf("[run] error: %w", internalError.ErrorRedisConnect)
 	}
-	bucketRepository := repository.NewBucketRepo(rs.Client, logger)
+	bucketRepository := repository.NewBucketRepo(rs.Client)
 	bucketUsecase := usecase.NewBucketUsecase(bucketRepository, cfg.BucketCapacity)
 
 	mux := http.NewServeMux()
 	handle := handler.NewBucketHandler(bucketUsecase, logger)
 	handle.Register(mux)
 
-	server := httpserver.NewServer(cfg.HTTP.Host, cfg.HTTP.Port, mux)
+	server := httpserver.NewServer(cfg.HTTP.Port, mux)
 
 	ctx, cancel := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
@@ -43,16 +43,19 @@ func Run(cfg *config.Config) error {
 		defer cancel()
 
 		if err := server.Stop(ctx); err != nil {
-			logger.Error("failed to stop http server: " + err.Error())
+			logger.Error("[run] failed to stop http server error: %w", err)
+		}
+		if err := rs.Close(); err != nil {
+			logger.Error("[run] redis close error: %w", err)
 		}
 	}()
 
-	logger.Info("calendar is running...")
+	logger.Info("[app] antibruteforce is running...")
 
 	if err := server.Start(ctx); err != nil {
-		logger.Error("failed to start http server: " + err.Error())
 		cancel()
-		return err
+		logger.Error("[run] failed to start http server error:", err.Error())
 	}
+	// cmd.Execute()
 	return nil
 }

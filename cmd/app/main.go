@@ -12,7 +12,7 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "./../../config/config.yml", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "./config/config.yml", "Path to configuration file")
 }
 
 func main() {
@@ -20,10 +20,11 @@ func main() {
 
 	cfg, err := config.NewConfig(configFile)
 	if err != nil {
-		log.Fatalf("config error: %s", err)
+		log.Fatalf("[main] parse config error: %s", err.Error())
 	}
 
 	if err := app.Run(cfg); err != nil {
+		log.Fatalf("[main] app start failed error: %s", err.Error())
 		os.Exit(1)
 	}
 }

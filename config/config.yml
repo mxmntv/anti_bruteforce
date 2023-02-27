@@ -4,17 +4,16 @@ app:
   apiVersion: '1'
 
 http:
-  host: 'localhost'
   port: 8080
 
 logger:
   logLevel: 'debug'
 
 redis:
-  redisHost: 'localhost'
+  redisHost: 'redis'
   redisPort: 6379
 
 capacity:
-  n: 10
-  m: 100
-  k: 1000
+  loginCapacity: 10
+  pwdCapacity: 100
+  ipCapacity: 1000

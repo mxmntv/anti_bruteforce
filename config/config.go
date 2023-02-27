@@ -12,7 +12,7 @@ type Config struct {
 	HTTP                 `yaml:"http"`
 	Log                  `yaml:"logger"`
 	Redis                `yaml:"redis"`
-	model.BucketCapacity `yaml:"capacity"` // doubt
+	model.BucketCapacity `yaml:"capacity"`
 }
 
 type App struct {
@@ -22,8 +22,7 @@ type App struct {
 }
 
 type HTTP struct {
-	Host string `env-required:"true" yaml:"host"    env:"HTTP_HOST"`
-	Port int    `env-required:"true" yaml:"port"    env:"HTTP_PORT"`
+	Port int `env-required:"true" yaml:"port"    env:"HTTP_PORT"`
 }
 
 type Log struct {
